@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+
+{% block title %}Novo Chamado{% endblock %}
+
+{% block content %}
+<section class="login-panel">
+    <h1>Novo chamado</h1>
+    <p>Informe o título, descrição e urgência do chamado.</p>
+    {% if form.errors %}
+        <div class="alert">
+            Verifique os dados do formulário antes de enviar.
+        </div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" data-show-progress="true">
+        {% csrf_token %}
+        <div class="form-group">
+            {{ form.title.label_tag }}
+            {{ form.title }}
+        </div>
+        <div class="form-group">
+            {{ form.description.label_tag }}
+            {{ form.description }}
+        </div>
+        <div class="form-group">
+            {{ form.ticket_type.label_tag }}
+            {{ form.ticket_type }}
+        </div>
+        <div class="form-group">
+            {{ form.urgency.label_tag }}
+            <div class="urgency-selector">
+                {{ form.urgency }}
+                <span class="urgency-preview urgency-normal" id="urgency-preview">Normal</span>
+            </div>
+        </div>
+        <div class="form-group">
+            {{ form.attachments.label_tag }}
+            {{ form.attachments }}
+            {% if form.attachments.help_text %}
+                <small>{{ form.attachments.help_text }}</small>
+            {% endif %}
+        </div>
+        <button type="submit">Registrar chamado</button>
+    </form>
+    <script>
+        (function () {
+            const select = document.querySelector('#id_urgency');
+            const preview = document.getElementById('urgency-preview');
+            const updatePreview = () => {
+                const option = select.options[select.selectedIndex];
+                const value = option.value;
+                preview.textContent = option.textContent.trim();
+                preview.className = 'urgency-preview urgency-' + value;
+            };
+            if (select && preview) {
+                updatePreview();
+                select.addEventListener('change', updatePreview);
+            }
+        })();
+    </script>
+</section>
+{% endblock %}

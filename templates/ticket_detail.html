@@ -1,0 +1,209 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ ticket.title }}{% endblock %}
+
+{% block content %}
+<section class="ticket-detail">
+    <header class="ticket-header">
+        <div>
+            <h1>#{{ ticket.id }} · {{ ticket.title }}</h1>
+            <p>{{ ticket.description }}</p>
+        </div>
+        <div class="ticket-meta">
+            <span>Status: <strong>{{ ticket.get_status_display }}</strong></span>
+            <span>
+                Urgência:
+                <span class="urgency-badge urgency-{{ ticket.urgency }}">
+                    {{ ticket.get_urgency_display }}
+                </span>
+            </span>
+            <span>Tipo: <strong>{{ ticket.get_ticket_type_display }}</strong></span>
+            <span>Solicitante: {{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</span>
+            <span>
+                Responsáveis:
+                {% if working_user_names %}
+                    {{ working_user_names|join:", " }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+            <span>Criado em: {{ ticket.created_at|date:"d/m/Y H:i" }}</span>
+        </div>
+    </header>
+
+    <div class="detail-back">
+        <a class="back-link" href="{% url 'dashboard' %}">Voltar ao painel</a>
+    </div>
+
+    <div class="detail-grid">
+        <article class="ticket-panel">
+            <h2>Descrição</h2>
+            <p>{{ ticket.description }}</p>
+        </article>
+        {% if attachments %}
+            <article class="ticket-panel">
+                <h2>Anexos</h2>
+                <ul class="attachment-list">
+                    {% for attachment in attachments %}
+                        <li>
+                            <a href="{{ attachment.file.url }}" target="_blank" rel="noreferrer">
+                                {{ attachment.file.name }}
+                            </a>
+                            <small>{{ attachment.uploaded_at|date:"d/m/Y H:i" }}</small>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </article>
+        {% endif %}
+        <article class="ticket-panel">
+            <h2>Ações</h2>
+            {% if is_ti %}
+                <form method="post" class="resolution-form" data-show-progress="true">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        {{ resolution_form.resolution.label_tag }}
+                        {{ resolution_form.resolution }}
+                        {% for error in resolution_form.resolution.errors %}
+                            <p class="form-error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    <button class="cta-button" name="action" value="resolve">Finalizar chamado</button>
+                </form>
+                <form method="post" class="action-form" data-show-progress="true">
+                    {% csrf_token %}
+                    <button class="cta-button" name="action" value="in_progress">Marcar como em execução</button>
+                    <button class="cta-button cta-outline" name="action" value="awaiting">Marcar como pendente</button>
+                </form>
+                <form method="post" class="action-form">
+                    {% csrf_token %}
+                    <button class="cta-button" name="action" value="join_work"
+                        {% if is_working_user or ticket.status == ticket_status.RESOLVED %}
+                            disabled
+                        {% endif %}
+                    >Entrar no atendimento</button>
+                </form>
+                <div class="related-widget">
+                    <button type="button" id="related-button" class="cta-button cta-outline" data-url="{% url 'ticket_related' ticket.pk %}">
+                        Buscar chamados parecidos
+                    </button>
+                    <div id="related-container" class="related-container hidden">
+                        <p class="muted">Clique no botão para ver sugestões baseadas em chamados fechados.</p>
+                    </div>
+                </div>
+            {% endif %}
+            {% if ticket.status == ticket_status.RESOLVED %}
+                <form method="post" class="action-form" data-show-progress="true">
+                    {% csrf_token %}
+                    <button class="cta-button cta-reopen" name="action" value="reopen">Reabrir chamado</button>
+                </form>
+            {% endif %}
+        </article>
+    </div>
+
+    <section class="message-panel">
+        <div class="message-panel-header">
+            <h2>Mensagens</h2>
+            <p>Troque comentários com a equipe de TI.</p>
+        </div>
+        <div class="message-list">
+            {% for message in messages %}
+                <article class="message-item {% if message.author == request.user %}message-author{% endif %}">
+                    <header>
+                        <strong>{{ message.author.get_full_name|default:message.author.username }}</strong>
+                        <span>{{ message.created_at|date:"d/m/Y H:i" }}</span>
+                    </header>
+                    <p>{{ message.text }}</p>
+                </article>
+            {% empty %}
+                <p class="muted">Ainda não há mensagens neste chamado.</p>
+            {% endfor %}
+        </div>
+        <form method="post" class="message-form" data-show-progress="true" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                {{ message_form.text.label_tag }}
+                {{ message_form.text }}
+                {% for error in message_form.text.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div class="form-group">
+                {{ message_form.attachments.label_tag }}
+                {{ message_form.attachments }}
+                {% if message_form.attachments.help_text %}
+                    <small class="muted">{{ message_form.attachments.help_text }}</small>
+                {% endif %}
+            </div>
+            <button type="submit">Enviar mensagem</button>
+        </form>
+    </section>
+</section>
+<script>
+(function () {
+    const button = document.getElementById('related-button');
+    const container = document.getElementById('related-container');
+
+    const render = (tickets) => {
+        if (!container) return;
+        if (!tickets.length) {
+            container.innerHTML = '<p class="muted">Nenhum chamado parecido foi encontrado.</p>';
+            return;
+        }
+        container.innerHTML = tickets.map(ticket => `
+            <article class="related-card">
+                <header>
+                    <strong>${ticket.title}</strong>
+                    <span>${ticket.urgency}</span>
+                </header>
+                <p>${ticket.resolution ? ticket.resolution.substring(0, 120) + (ticket.resolution.length > 120 ? '…' : '') : 'Sem resumo'}</p>
+                <footer>
+                    <small>Resolvido em ${ticket.resolved_at ? new Date(ticket.resolved_at).toLocaleString('pt-BR') : '—'}</small>
+                    <a class="text-link" href="${ticket.url}">Abrir</a>
+                </footer>
+            </article>
+        `).join('');
+    };
+
+    const showMessage = (html) => {
+        if (!container) return;
+        container.innerHTML = html;
+    };
+
+    const setContainerLoading = () => {
+        if (!container) return;
+        container.classList.remove('hidden');
+        container.innerHTML = '<p class="muted">Buscando chamados similares…</p>';
+    };
+
+    const resetButton = () => {
+        if (!button) return;
+        button.disabled = false;
+        button.textContent = 'Buscar chamados parecidos';
+    };
+
+    if (!button || !container) return;
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        button.textContent = 'Buscando chamados parecidos…';
+        setContainerLoading();
+        try {
+            const response = await fetch(button.dataset.url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            render(data.tickets || []);
+        } catch (error) {
+            showMessage(`<p class="muted">Não foi possível carregar os chamados parecidos: ${error.message}</p>`);
+        } finally {
+            resetButton();
+        }
+    });
+})();
+</script>
+{% endblock %}

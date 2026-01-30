@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurar WhatsApp{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <header class="dashboard-header">
+        <div>
+            <h1>Configurar WhatsApp</h1>
+            <p>Cadastre os números que receberão notificações de novos chamados.</p>
+        </div>
+    </header>
+
+    <article class="ticket-panel">
+        <h2>Adicionar número</h2>
+        <form method="post" class="action-form">
+            {% csrf_token %}
+            <div class="form-group">
+                {{ form.phone_number.label_tag }}
+                {{ form.phone_number }}
+                {% if form.phone_number.help_text %}
+                    <small>{{ form.phone_number.help_text }}</small>
+                {% endif %}
+            </div>
+            <button class="cta-button" type="submit">Salvar número</button>
+        </form>
+    </article>
+
+    <section class="ticket-section">
+        <div class="ticket-heading">
+            <h2>Números cadastrados</h2>
+            {% if not recipients %}
+                <small class="muted">Nenhum número cadastrado ainda.</small>
+            {% endif %}
+        </div>
+        {% if recipients %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Telefone normalizado</th>
+                            <th>Inserido em</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for recipient in recipients %}
+                            <tr>
+                                <td>{{ recipient.phone_number }}</td>
+                                <td>{{ recipient.added_at|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </section>
+</section>
+{% endblock %}

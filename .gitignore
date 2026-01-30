@@ -1,0 +1,30 @@
+# Bytecode and build artifacts
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+env/
+venv/
+.venv/
+
+# Django and Python artifacts
+db.sqlite3
+media/
+*.log
+*.pot
+*.pyc
+
+# Django static collection and temp files
+staticfiles/
+*.mo
+
+# IDE/editor configs
+.vscode/
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# OS generated files
+.DS_Store
+Thumbs.db

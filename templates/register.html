@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+
+{% block title %}Cadastro{% endblock %}
+
+{% block content %}
+<section class="login-panel">
+    <h1>Cadastrar usuário</h1>
+    <p>Informe os dados básicos e escolha uma senha.</p>
+    {% if form.errors %}
+        <div class="alert">
+            Verifique os dados do formulário e tente novamente.
+        </div>
+    {% endif %}
+    <form method="post" novalidate>
+        {% csrf_token %}
+        <div class="form-group">
+            {{ form.username.label_tag }}
+            {{ form.username }}
+        </div>
+        <div class="form-group">
+            {{ form.email.label_tag }}
+            {{ form.email }}
+        </div>
+        <div class="form-group">
+            {{ form.full_name.label_tag }}
+            {{ form.full_name }}
+        </div>
+        <div class="form-group">
+            {{ form.setor.label_tag }}
+            {{ form.setor }}
+        </div>
+        <div class="form-group">
+            {{ form.password1.label_tag }}
+            {{ form.password1 }}
+        </div>
+        <div class="form-group">
+            {{ form.password2.label_tag }}
+            {{ form.password2 }}
+        </div>
+        <button type="submit">Criar cadastro</button>
+    </form>
+    <p class="small-link">
+        Já tem conta? <a href="{% url 'login' %}">Voltar ao login</a>.
+    </p>
+</section>
+{% endblock %}

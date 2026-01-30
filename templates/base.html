@@ -1,0 +1,61 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>{% block title %}Programa Chamados{% endblock %}</title>
+    <link rel="icon" href="{% static 'favicon.ico' %}">
+    <link rel="stylesheet" href="{% static 'css/site.css' %}">
+</head>
+<body>
+    <header class="page-header">
+        <div class="brand">
+            {% if request.user.is_authenticated %}
+                <a class="brand-card" href="{% url 'dashboard' %}"><strong>Helpdesk TI</strong></a>
+            {% else %}
+                <a class="brand-card" href="{% url 'login' %}"><strong>Helpdesk TI</strong></a>
+            {% endif %}
+            <span>Atendimento dedicado à Sidertec</span>
+        </div>
+        {% if request.user.is_authenticated %}
+            <div class="user-block">
+                <span>{{ request.user.username }}</span>
+                <a class="logout" href="{% url 'logout' %}">Sair</a>
+                <a class="text-link" href="{% url 'profile' %}">Meu perfil</a>
+            </div>
+        {% endif %}
+    </header>
+
+    {% if messages %}
+        <div class="messages">
+            {% for message in messages %}
+                <div class="flash flash-{{ message.tags }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <main class="page-main">
+        {% block content %}{% endblock %}
+    </main>
+
+<footer class="page-footer">
+    <small>Serviço criado para atendimento interno de TI – rede local.</small>
+</footer>
+<div id="notification-progress" class="notification-progress hidden">
+    <strong>Enviando notificações...</strong>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const progress = document.getElementById('notification-progress');
+    document.querySelectorAll('form[data-show-progress]').forEach(form => {
+        form.addEventListener('submit', () => {
+            if (progress) {
+                progress.classList.remove('hidden');
+            }
+        });
+    });
+});
+</script>
+</body>
+</html>

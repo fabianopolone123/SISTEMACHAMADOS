@@ -1,0 +1,55 @@
+{% extends 'base.html' %}
+
+{% block title %}Gerenciar usuários{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <header class="dashboard-header">
+        <div>
+            <h1>Gerenciar usuários</h1>
+            <p>TI pode resetar senhas ou excluir registros.</p>
+        </div>
+    </header>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Usuário</th>
+                    <th>E-mail</th>
+                    <th>Setor</th>
+                    <th>Grupo</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                    <tr>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            {% if user.perfil %}
+                                {{ user.perfil.setor }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_staff %}TI{% else %}Usuário{% endif %}
+                        </td>
+                        <td>
+                            <form method="post" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="user_id" value="{{ user.id }}">
+                                <button class="cta-button cta-outline" name="action" value="reset_password">Resetar senha (1234)</button>
+                                {% if user != request.user %}
+                                    <button class="cta-button cta-reopen" name="action" value="delete_user" onclick="return confirm('Deseja excluir {{ user.username }}?');">Excluir</button>
+                                {% endif %}
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

@@ -475,6 +475,55 @@ button {
     margin-top: 0;
 }
 
+.report-cta-list {
+    margin: 0.7rem 0 1rem;
+    padding-left: 1.2rem;
+    color: #2f3b4d;
+}
+
+.report-cta-list li {
+    margin-bottom: 0.35rem;
+}
+
+.filters-summary {
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: #4a5565;
+}
+
+.report-breakdown {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.report-breakdown li {
+    display: flex;
+    justify-content: space-between;
+    padding: 0.45rem 0.6rem;
+    border-bottom: 1px solid #dfe3f0;
+    font-weight: 500;
+}
+
+.report-breakdown li:last-child {
+    border-bottom: none;
+}
+
+.report-chart {
+    position: relative;
+    height: 260px;
+    max-height: 320px;
+}
+
+.report-chart canvas {
+    width: 100% !important;
+    height: 100% !important;
+    display: block;
+}
+
 .message-panel {
     padding: 1.5rem;
     border-radius: 16px;

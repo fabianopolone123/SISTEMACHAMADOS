@@ -13,6 +13,7 @@
             <a class="cta-button" href="{% url 'new_ticket' %}">Novo chamado</a>
             {% if is_ti %}
                 <a class="cta-button cta-outline" href="{% url 'finished_tickets' %}">Chamados finalizados</a>
+                <a class="cta-button cta-outline" href="{% url 'ti_reports' %}">Relatórios TI</a>
                 <a class="cta-button cta-outline" href="{% url 'whatsapp_config' %}">Configurar WhatsApp</a>
                 <a class="cta-button cta-outline" href="{% url 'manage_users' %}">Gerenciar usuários</a>
             {% endif %}

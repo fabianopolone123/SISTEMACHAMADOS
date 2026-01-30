@@ -52,6 +52,7 @@
                 </div>
                 <button class="cta-button" type="submit">Aplicar filtros</button>
             </form>
+            <p class="muted filters-summary">{{ filters_summary }}</p>
         </article>
         <article class="ticket-panel">
             <h2>Indicadores</h2>
@@ -62,11 +63,11 @@
                 </div>
                 <div class="report-card">
                     <small>Chamados resolvidos no filtro</small>
-                    <strong>{{ status_counts.resolved|default:0 }}</strong>
+                    <strong>{{ resolved_count }}</strong>
                 </div>
                 <div class="report-card">
                     <small>Chamados pendentes no filtro</small>
-                    <strong>{{ total_tickets|add:-status_counts.resolved|default:0 }}</strong>
+                    <strong>{{ pending_count }}</strong>
                 </div>
                 <div class="report-card">
                     <small>Urgência média</small>
@@ -78,22 +79,66 @@
 
     <div class="detail-grid">
         <article class="ticket-panel">
+            <h2>Distribuição por status</h2>
+            <ul class="report-breakdown">
+                {% for item in status_breakdown %}
+                    <li>
+                        <span>{{ item.label }}</span>
+                        <strong>{{ item.count }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article class="ticket-panel">
+            <h2>Distribuição por urgência</h2>
+            <ul class="report-breakdown">
+                {% for item in urgency_breakdown %}
+                    <li>
+                        <span>{{ item.label }}</span>
+                        <strong>{{ item.count }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article class="ticket-panel">
+            <h2>Distribuição por tipo</h2>
+            <ul class="report-breakdown">
+                {% for item in type_breakdown %}
+                    <li>
+                        <span>{{ item.label }}</span>
+                        <strong>{{ item.count }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </article>
+    </div>
+
+    <div class="detail-grid">
+        <article class="ticket-panel">
             <h2>Status</h2>
-            <canvas id="statusChart" height="220"></canvas>
+            <div class="report-chart">
+                <canvas id="statusChart" height="220"></canvas>
+            </div>
         </article>
         <article class="ticket-panel">
             <h2>Urgências</h2>
-            <canvas id="urgencyChart" height="220"></canvas>
+            <div class="report-chart">
+                <canvas id="urgencyChart" height="220"></canvas>
+            </div>
         </article>
     </div>
     <div class="detail-grid">
         <article class="ticket-panel">
             <h2>Tipos</h2>
-            <canvas id="typeChart" height="220"></canvas>
+            <div class="report-chart">
+                <canvas id="typeChart" height="220"></canvas>
+            </div>
         </article>
         <article class="ticket-panel">
             <h2>Chamados por mês</h2>
-            <canvas id="monthlyChart" height="220"></canvas>
+            <div class="report-chart">
+                <canvas id="monthlyChart" height="220"></canvas>
+            </div>
         </article>
     </div>
 

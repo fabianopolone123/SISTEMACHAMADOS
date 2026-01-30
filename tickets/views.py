@@ -546,6 +546,35 @@ def ti_reports(request):
     urgency_chart = [{'label': urgency_labels[key], 'count': urgency_counts[key]} for key in urgency_labels]
     type_chart = [{'label': type_labels[key], 'count': type_counts[key]} for key in type_labels]
 
+    status_breakdown = [
+        {'label': label, 'count': status_counts[key]}
+        for key, label in TicketStatus.choices
+    ]
+    urgency_breakdown = [
+        {'label': label, 'count': urgency_counts[key]}
+        for key, label in TicketUrgency.choices
+    ]
+    type_breakdown = [
+        {'label': label, 'count': type_counts[key]}
+        for key, label in TicketType.choices
+    ]
+
+    active_filters = []
+    if filters['status']:
+        active_filters.append(f"Status: {status_labels.get(filters['status'], filters['status'])}")
+    if filters['urgency']:
+        active_filters.append(f"Urgência: {urgency_labels.get(filters['urgency'], filters['urgency'])}")
+    if filters['ticket_type']:
+        active_filters.append(f"Tipo: {type_labels.get(filters['ticket_type'], filters['ticket_type'])}")
+    if filters['from_date']:
+        active_filters.append(f"A partir de {filters['from_date']}")
+    if filters['to_date']:
+        active_filters.append(f"Até {filters['to_date']}")
+
+    total_tickets = queryset.count()
+    resolved_count = status_counts.get(TicketStatus.RESOLVED, 0)
+    pending_count = total_tickets - resolved_count
+
     context = {
         'filters': filters,
         'status_chart_data': json.dumps(status_chart),
@@ -553,14 +582,23 @@ def ti_reports(request):
         'type_chart_data': json.dumps(type_chart),
         'monthly_chart_data': json.dumps(monthly_data),
         'recent_tickets': queryset.order_by('-created_at')[:15],
-        'total_tickets': queryset.count(),
+        'total_tickets': total_tickets,
         'status_counts': status_counts,
         'urgency_counts': urgency_counts,
         'type_counts': type_counts,
+        'resolved_count': resolved_count,
+        'pending_count': pending_count,
+        'status_breakdown': status_breakdown,
+        'urgency_breakdown': urgency_breakdown,
+        'type_breakdown': type_breakdown,
+        'filters_summary': ' • '.join(active_filters) if active_filters else 'Nenhum filtro aplicado.',
     }
     context.update({
         'status_choices': TicketStatus.choices,
         'urgency_choices': TicketUrgency.choices,
         'type_choices': TicketType.choices,
+        'status_labels': status_labels,
+        'urgency_labels': urgency_labels,
+        'type_labels': type_labels,
     })
     return render(request, 'reports.html', context)

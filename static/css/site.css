@@ -512,6 +512,53 @@ button {
     border-bottom: none;
 }
 
+.event-group h3 {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+}
+
+.event-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.event-list li {
+    display: flex;
+    gap: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid #e3e6ec;
+}
+
+.event-list li:last-child {
+    border-bottom: none;
+}
+
+.event-time {
+    font-weight: 700;
+    color: #0f62fe;
+    min-width: 64px;
+}
+
+.event-content strong {
+    display: block;
+    font-size: 1rem;
+    margin-bottom: 0.2rem;
+}
+
+.event-content p {
+    margin: 0;
+    color: #2f3b4d;
+}
+
+.event-content small {
+    color: #5a6772;
+    font-size: 0.85rem;
+}
+
 .report-chart {
     position: relative;
     height: 260px;
@@ -572,6 +619,73 @@ button {
     gap: 0.75rem;
     flex-wrap: wrap;
     margin-bottom: 1rem;
+}
+
+.inline-action {
+    margin: 0.35rem 0 0;
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.inline-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    align-items: center;
+    width: 100%;
+}
+
+.actions-cell {
+    text-align: center;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.actions-cell .inline-actions,
+.actions-cell .inline-link,
+.actions-cell .inline-action-button {
+    margin: 0 auto;
+}
+
+.actions-cell form.inline-action {
+    width: 100%;
+    max-width: 180px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.inline-link,
+.inline-action-button {
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-transform: none;
+    color: #0f62fe;
+    text-decoration: none;
+    background: #f5f6ff;
+    border-radius: 8px;
+    padding: 0.15rem 0.8rem;
+    border: 1px solid transparent;
+    transition: border 0.2s ease, background 0.2s ease, transform 0.2s ease;
+    box-shadow: 0 4px 12px rgba(15, 98, 254, 0.12);
+    width: 140px;
+    text-align: center;
+    display: inline-block;
+}
+
+.inline-link:hover,
+.inline-action-button:hover {
+    border-color: #0f62fe;
+    background: #e0e7ff;
+    transform: translateY(-1px);
+}
+
+.table-wrapper td {
+    vertical-align: middle;
 }
 
 .resolution-form {

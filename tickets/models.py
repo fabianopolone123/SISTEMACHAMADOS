@@ -125,6 +125,30 @@ class TicketMessage(models.Model):
         return f'{author}: {self.text[:40]}'
 
 
+class TicketEvent(models.Model):
+    class EventType(models.TextChoices):
+        CREATED = 'created', 'Criação'
+        STATUS = 'status_change', 'Mudança de status'
+        COMMENT = 'comment', 'Comentário'
+        WORKING_USER = 'working_user', 'Responsável adicional'
+
+    ticket = models.ForeignKey(Ticket, on_delete=models.CASCADE, related_name='events')
+    event_type = models.CharField('Tipo do evento', max_length=30, choices=EventType.choices)
+    description = models.TextField('Descrição', blank=True)
+    status = models.CharField('Status relacionado', max_length=20, choices=TicketStatus.choices, blank=True, null=True)
+    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    timestamp = models.DateTimeField('Registrado em', auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Evento de chamado'
+        verbose_name_plural = 'Eventos de chamados'
+        ordering = ['-timestamp']
+
+    def __str__(self):
+        actor = self.performed_by.get_full_name() if self.performed_by else 'Sistema'
+        return f'{self.ticket} · {self.get_event_type_display()} por {actor} em {self.timestamp:%d/%m/%Y %H:%M}'
+
+
 class WhatsAppRecipient(models.Model):
     phone_number = models.CharField('Telefone', max_length=20, unique=True)
     original_input = models.CharField('Entrada original', max_length=32, blank=True)

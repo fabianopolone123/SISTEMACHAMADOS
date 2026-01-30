@@ -28,7 +28,15 @@ from .forms import (
     ProfileUpdateForm,
     PasswordUpdateForm,
 )
-from .models import Ticket, TicketStatus, TicketUrgency, TicketAttachment, TicketType, WhatsAppRecipient
+from .models import (
+    Ticket,
+    TicketStatus,
+    TicketUrgency,
+    TicketAttachment,
+    TicketType,
+    WhatsAppRecipient,
+    TicketEvent,
+)
 from .utils import broadcast_ticket_event, serialize_ticket, send_ticket_email
 from .wapi import send_whatsapp_message
 
@@ -103,7 +111,7 @@ def _gather_dashboard(request_user):
     }
 
 
-def _update_ticket_status(ticket, *, status, assigned=None, resolution_text=None, extra_payload=None):
+def _update_ticket_status(ticket, *, status, assigned=None, resolution_text=None, extra_payload=None, performed_by=None):
     ticket.status = status
     if assigned is not None:
         ticket.assigned_to = assigned
@@ -113,6 +121,18 @@ def _update_ticket_status(ticket, *, status, assigned=None, resolution_text=None
     else:
         ticket.resolved_at = None
     ticket.save()
+    description_parts = [f"Status alterado para {ticket.get_status_display()}"]
+    if assigned:
+        description_parts.append(f"Responsável: {assigned.get_full_name() or assigned.username}")
+    if resolution_text:
+        description_parts.append(f"Resolução: {shorten(resolution_text.strip(), width=200, placeholder='...')}")
+    TicketEvent.objects.create(
+        ticket=ticket,
+        event_type=TicketEvent.EventType.STATUS,
+        description=' · '.join(description_parts),
+        status=status,
+        performed_by=performed_by,
+    )
     if assigned:
         ticket.working_users.add(assigned)
     payload = {'status': ticket.status}
@@ -139,28 +159,32 @@ def _handle_ticket_action(request, ticket, is_ti_user, resolution_form):
     action = request.POST.get('action')
     if not action:
         return None
+    next_url = request.POST.get('next')
+    if not next_url:
+        next_url = reverse('ticket_detail', kwargs={'pk': ticket.pk})
     if action == 'resolve' and is_ti_user:
         if resolution_form.is_valid():
             _update_ticket_status(
                 ticket,
                 status=TicketStatus.RESOLVED,
                 resolution_text=resolution_form.cleaned_data['resolution'],
+                performed_by=request.user,
             )
             return redirect('dashboard')
         return None
     if action == 'in_progress' and is_ti_user:
-        _update_ticket_status(ticket, status=TicketStatus.IN_PROGRESS, assigned=request.user)
-        return redirect('ticket_detail', pk=ticket.pk)
+        _update_ticket_status(ticket, status=TicketStatus.IN_PROGRESS, assigned=request.user, performed_by=request.user)
+        return redirect(next_url)
     if action == 'awaiting' and is_ti_user:
-        _update_ticket_status(ticket, status=TicketStatus.AWAITING)
-        return redirect('ticket_detail', pk=ticket.pk)
+        _update_ticket_status(ticket, status=TicketStatus.AWAITING, performed_by=request.user)
+        return redirect(next_url)
     if action == 'reopen' and ticket.status == TicketStatus.RESOLVED:
-        _update_ticket_status(ticket, status=TicketStatus.IN_PROGRESS)
-        return redirect('ticket_detail', pk=ticket.pk)
+        _update_ticket_status(ticket, status=TicketStatus.IN_PROGRESS, performed_by=request.user)
+        return redirect(next_url)
     if action == 'join_work' and is_ti_user:
         _add_working_user(ticket, request.user)
         messages.success(request, 'Você agora aparece como responsável ativo por este chamado.')
-        return redirect('ticket_detail', pk=ticket.pk)
+        return redirect(next_url)
     return None
 
 
@@ -237,6 +261,12 @@ def _add_working_user(ticket, user):
     if not user or ticket.status == TicketStatus.RESOLVED:
         return
     ticket.working_users.add(user)
+    TicketEvent.objects.create(
+        ticket=ticket,
+        event_type=TicketEvent.EventType.WORKING_USER,
+        description=f"{user.get_full_name() or user.username} passou a acompanhar o chamado",
+        performed_by=user,
+    )
 
 
 @login_required
@@ -286,6 +316,13 @@ def create_ticket(request):
         attachments = request.FILES.getlist('attachments')
         for attachment in attachments:
             TicketAttachment.objects.create(ticket=ticket, file=attachment)
+        TicketEvent.objects.create(
+            ticket=ticket,
+            event_type=TicketEvent.EventType.CREATED,
+            description=f"Chamado criado por {ticket.created_by.get_full_name() or ticket.created_by.username}",
+            status=ticket.status,
+            performed_by=ticket.created_by,
+        )
         messages.success(request, 'Chamado registrado! Você será redirecionado ao dashboard.')
         broadcast_ticket_event('ticket_created', ticket)
         _notify_whatsapp(ticket)
@@ -542,6 +579,25 @@ def ti_reports(request):
         for row in monthly_qs
     ]
 
+    event_qs = (
+        TicketEvent.objects.select_related('ticket', 'performed_by')
+        .filter(ticket__in=queryset)
+    )
+    if start_date:
+        event_qs = event_qs.filter(timestamp__date__gte=start_date)
+    if end_date:
+        event_qs = event_qs.filter(timestamp__date__lte=end_date)
+    event_qs = event_qs.order_by('timestamp')
+
+    events_by_day = {}
+    for event in event_qs:
+        local_date = timezone.localtime(event.timestamp).date()
+        events_by_day.setdefault(local_date, []).append(event)
+    events_timeline = [
+        {'date': day, 'events': events_by_day[day]}
+        for day in sorted(events_by_day)
+    ]
+
     status_chart = [{'label': status_labels[key], 'count': status_counts[key]} for key in status_labels]
     urgency_chart = [{'label': urgency_labels[key], 'count': urgency_counts[key]} for key in urgency_labels]
     type_chart = [{'label': type_labels[key], 'count': type_counts[key]} for key in type_labels]
@@ -592,6 +648,7 @@ def ti_reports(request):
         'urgency_breakdown': urgency_breakdown,
         'type_breakdown': type_breakdown,
         'filters_summary': ' • '.join(active_filters) if active_filters else 'Nenhum filtro aplicado.',
+        'events_timeline': events_timeline,
     }
     context.update({
         'status_choices': TicketStatus.choices,

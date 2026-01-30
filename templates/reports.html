@@ -113,6 +113,45 @@
         </article>
     </div>
 
+    <section class="ticket-section">
+        <div class="ticket-heading">
+            <h2>Eventos por dia</h2>
+            <small class="muted">Histórico de criação e alterações filtrados pelo período selecionado.</small>
+        </div>
+        {% if events_timeline %}
+            {% for day in events_timeline %}
+                <article class="ticket-panel event-group">
+                    <h3>{{ day.date|date:"d/m/Y" }}</h3>
+                    <ul class="event-list">
+                        {% for event in day.events %}
+                            <li>
+                                <span class="event-time">{{ event.timestamp|time:"H:i" }}</span>
+                                <div class="event-content">
+                                    <strong>#{{ event.ticket.id }} - {{ event.ticket.title }}</strong>
+                                    <p>{{ event.description }}</p>
+                                    <small>
+                                        {{ event.get_event_type_display }}
+                                        {% if event.status %}
+                                            · {{ event.get_status_display }}
+                                        {% endif %}
+                                        · por
+                                        {% if event.performed_by %}
+                                            {{ event.performed_by.get_full_name|default:event.performed_by.username }}
+                                        {% else %}
+                                            Sistema
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </article>
+            {% endfor %}
+        {% else %}
+            <p class="muted">Nenhum evento registrado para o período escolhido.</p>
+        {% endif %}
+    </section>
+
     <div class="detail-grid">
         <article class="ticket-panel">
             <h2>Status</h2>

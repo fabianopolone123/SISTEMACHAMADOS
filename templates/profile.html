@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Meu perfil{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <header class="dashboard-header">
+        <div>
+            <h1>Meu perfil</h1>
+            <p>Atualize os dados pessoais ou altere sua senha.</p>
+        </div>
+    </header>
+
+    <article class="ticket-panel">
+        <h2>Dados pessoais</h2>
+        <form method="post" class="action-form">
+            {% csrf_token %}
+            {{ profile_form.non_field_errors }}
+            <div class="form-group">
+                {{ profile_form.full_name.label_tag }}
+                {{ profile_form.full_name }}
+            </div>
+            <div class="form-group">
+                {{ profile_form.email.label_tag }}
+                {{ profile_form.email }}
+            </div>
+            <div class="form-group">
+                {{ profile_form.setor.label_tag }}
+                {{ profile_form.setor }}
+            </div>
+            <button class="cta-button" name="profile_submit" type="submit">Salvar dados</button>
+        </form>
+    </article>
+
+    <article class="ticket-panel">
+        <h2>Alterar senha</h2>
+        <form method="post" class="action-form">
+            {% csrf_token %}
+            {{ password_form.non_field_errors }}
+            <div class="form-group">
+                {{ password_form.new_password.label_tag }}
+                {{ password_form.new_password }}
+            </div>
+            <div class="form-group">
+                {{ password_form.confirm_password.label_tag }}
+                {{ password_form.confirm_password }}
+            </div>
+            <button class="cta-button cta-outline" name="password_submit" type="submit">Atualizar senha</button>
+        </form>
+    </article>
+    {% if is_ti %}
+        <article class="ticket-panel">
+            <h2>Relatórios TI</h2>
+            <p>Relatórios com filtros, indicadores e gráficos para acompanhar o volume e desempenho dos chamados.</p>
+            <ul class="report-cta-list">
+                <li>Filtros por status, urgência, tipo e período.</li>
+                <li>Gráficos com distribuição de status, urgências, tipos e tendência mensal.</li>
+                <li>Tabela com os 15 chamados mais recentes dentro dos filtros aplicados.</li>
+            </ul>
+            <a class="cta-button" href="{% url 'ti_reports' %}">Abrir relatórios</a>
+        </article>
+    {% endif %}
+</section>
+{% endblock %}

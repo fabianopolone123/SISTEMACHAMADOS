@@ -1,0 +1,160 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ dashboard_title }}{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <header class="dashboard-header">
+        <div>
+            <h1>{{ dashboard_title }}</h1>
+            <p>{{ highlight }}</p>
+        </div>
+        <div class="dashboard-actions">
+            <a class="cta-button" href="{% url 'new_ticket' %}">Novo chamado</a>
+            {% if is_ti %}
+                <a class="cta-button cta-outline" href="{% url 'finished_tickets' %}">Chamados finalizados</a>
+                <a class="cta-button cta-outline" href="{% url 'ti_reports' %}">Relatórios TI</a>
+                <a class="cta-button cta-outline" href="{% url 'whatsapp_config' %}">Configurar WhatsApp</a>
+                <a class="cta-button cta-outline" href="{% url 'manage_users' %}">Gerenciar usuários</a>
+                <a class="cta-button cta-outline" href="{% url 'inventory_management' %}">Inventario</a>
+            {% endif %}
+            <div class="dashboard-metric">
+                <small>Total de chamados listados</small>
+                <strong id="ticket-count">{{ ticket_count }}</strong>
+            </div>
+        </div>
+    </header>
+
+    {% if is_ti %}
+        <div class="urgency-cards" id="urgency-cards">
+            {% for card in urgency_cards %}
+                <article class="urgency-card card-urgency-{{ card.value }}" data-urgency="{{ card.value }}">
+                    <small>{{ card.label }}</small>
+                    <strong id="card-{{ card.value }}">{{ card.count }}</strong>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="user-note">
+            <p>Você visualiza apenas seus chamados. Use o botão “Novo chamado” para enviar um pedido ao time de TI e acompanhe o andamento aqui mesmo.</p>
+        </div>
+    {% endif %}
+
+    <section class="ticket-section">
+        <div class="ticket-heading">
+            <h2>Chamados recentes</h2>
+            {% if not recent_tickets %}
+                <small class="muted">Nenhum chamado foi registrado ainda.</small>
+            {% endif %}
+        </div>
+        {% if recent_tickets %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                            <th>Urgência</th>
+                            <th>Solicitante</th>
+                            <th>Responsáveis</th>
+                            <th>Criado em</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ticket-body">
+                        {% for ticket in recent_tickets %}
+                            <tr class="urgency-row urgency-{{ ticket.urgency }}">
+                                <td>#{{ ticket.id }}</td>
+                                <td>{{ ticket.title }}</td>
+                                <td>{{ ticket.get_ticket_type_display }}</td>
+                                <td>
+                                    <span class="status-label status-{{ ticket.status }}">
+                                        {{ ticket.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <span class="urgency-badge urgency-{{ ticket.urgency }}">
+                                        {{ ticket.get_urgency_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {{ ticket.created_by.get_full_name|default:ticket.created_by.username }}
+                                </td>
+                                <td>{{ ticket.working_users_display }}</td>
+                                <td>{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+                                <td class="actions-cell">
+                                    <div class="inline-actions">
+                                        <a class="inline-link" href="{% url 'ticket_detail' ticket.pk %}">Ver chamado</a>
+                                    {% if is_ti %}
+                                        <form method="post" action="{% url 'ticket_detail' ticket.pk %}" class="inline-action" data-show-progress="true">
+                                            {% csrf_token %}
+                                            <input type="hidden" name="next" value="{% url 'dashboard' %}">
+                                            <button class="inline-action-button" type="submit" name="action" value="in_progress">Marcar exec.</button>
+                                            <button class="inline-action-button" type="submit" name="action" value="awaiting">Marcar pend.</button>
+                                        </form>
+                                    {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% endif %}
+    </section>
+</section>
+
+    <script>
+      (() => {
+          const socketUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/tickets/`;
+          const ticketCountEl = document.getElementById('ticket-count');
+          const cardElements = {};
+          document.querySelectorAll('[data-urgency]').forEach(card => {
+              cardElements[card.dataset.urgency] = card.querySelector('strong');
+          });
+
+          const refreshCards = (counts) => {
+              Object.entries(counts).forEach(([urgency, total]) => {
+                  const target = cardElements[urgency];
+                  if (target) {
+                      target.textContent = total;
+                  }
+              });
+          };
+
+          const refreshDashboard = () => {
+              fetch("{% url 'dashboard_data' %}")
+                  .then((res) => {
+                      if (!res.ok) {
+                          throw new Error('Falha ao carregar os dados do painel.');
+                      }
+                      return res.json();
+                  })
+                  .then((data) => {
+                      refreshCards(data.urgency_counts);
+                      if (ticketCountEl) {
+                          ticketCountEl.textContent = data.ticket_count;
+                      }
+                  })
+                  .catch((error) => {
+                      console.error('Não foi possível atualizar o dashboard:', error);
+                  });
+          };
+
+          let socket;
+
+          const connect = () => {
+              socket = new WebSocket(socketUrl);
+              socket.addEventListener('message', refreshDashboard);
+              socket.addEventListener('close', () => {
+                  setTimeout(connect, 3000);
+              });
+          };
+
+          refreshDashboard();
+          connect();
+      })();
+    </script>
+{% endblock %}

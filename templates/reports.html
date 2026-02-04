@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+
+{% block title %}Relatórios TI{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <header class="dashboard-header">
+        <div>
+            <h1>Relatórios TI</h1>
+            <p>Filtros rápidos e gráficos com os indicadores mais importantes da operação.</p>
+        </div>
+    </header>
+
+    <div class="detail-grid">
+        <article class="ticket-panel">
+            <h2>Filtros</h2>
+            <form method="get" class="action-form">
+                <div class="form-group">
+                    <label for="filter-status">Status</label>
+                    <select id="filter-status" name="status">
+                        <option value="">Todos</option>
+                        {% for code, label in status_choices %}
+                            <option value="{{ code }}" {% if filters.status == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filter-urgency">Urgência</label>
+                    <select id="filter-urgency" name="urgency">
+                        <option value="">Todos</option>
+                        {% for code, label in urgency_choices %}
+                            <option value="{{ code }}" {% if filters.urgency == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filter-type">Tipo</label>
+                    <select id="filter-type" name="ticket_type">
+                        <option value="">Todos</option>
+                        {% for code, label in type_choices %}
+                            <option value="{{ code }}" {% if filters.ticket_type == code %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="filter-from">Criado a partir de</label>
+                    <input id="filter-from" type="date" name="from_date" value="{{ filters.from_date }}">
+                </div>
+                <div class="form-group">
+                    <label for="filter-to">Até</label>
+                    <input id="filter-to" type="date" name="to_date" value="{{ filters.to_date }}">
+                </div>
+                <button class="cta-button" type="submit">Aplicar filtros</button>
+            </form>
+            <p class="muted filters-summary">{{ filters_summary }}</p>
+        </article>
+        <article class="ticket-panel">
+            <h2>Indicadores</h2>
+            <div class="card-grid">
+                <div class="report-card">
+                    <small>Total de chamados</small>
+                    <strong>{{ total_tickets }}</strong>
+                </div>
+                <div class="report-card">
+                    <small>Chamados resolvidos no filtro</small>
+                    <strong>{{ resolved_count }}</strong>
+                </div>
+                <div class="report-card">
+                    <small>Chamados pendentes no filtro</small>
+                    <strong>{{ pending_count }}</strong>
+                </div>
+                <div class="report-card">
+                    <small>Urgência média</small>
+                    <strong>{{ filters.urgency|default:'Todas' }}</strong>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <div class="detail-grid">
+        <article class="ticket-panel">
+            <h2>Distribuição por status</h2>
+            <ul class="report-breakdown">
+                {% for item in status_breakdown %}
+                    <li>
+                        <span>{{ item.label }}</span>
+                        <strong>{{ item.count }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article class="ticket-panel">
+            <h2>Distribuição por urgência</h2>
+            <ul class="report-breakdown">
+                {% for item in urgency_breakdown %}
+                    <li>
+                        <span>{{ item.label }}</span>
+                        <strong>{{ item.count }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </article>
+        <article class="ticket-panel">
+            <h2>Distribuição por tipo</h2>
+            <ul class="report-breakdown">
+                {% for item in type_breakdown %}
+                    <li>
+                        <span>{{ item.label }}</span>
+                        <strong>{{ item.count }}</strong>
+                    </li>
+                {% endfor %}
+            </ul>
+        </article>
+    </div>
+
+    <section class="ticket-section">
+        <div class="ticket-heading">
+            <h2>Eventos por dia</h2>
+            <small class="muted">Histórico de criação e alterações filtrados pelo período selecionado.</small>
+        </div>
+        {% if events_timeline %}
+            {% for day in events_timeline %}
+                <article class="ticket-panel event-group">
+                    <h3>{{ day.date|date:"d/m/Y" }}</h3>
+                    <ul class="event-list">
+                        {% for event in day.events %}
+                            <li>
+                                <span class="event-time">{{ event.timestamp|time:"H:i" }}</span>
+                                <div class="event-content">
+                                    <strong>#{{ event.ticket.id }} - {{ event.ticket.title }}</strong>
+                                    <p>{{ event.description }}</p>
+                                    <small>
+                                        {{ event.get_event_type_display }}
+                                        {% if event.status %}
+                                            · {{ event.get_status_display }}
+                                        {% endif %}
+                                        · por
+                                        {% if event.performed_by %}
+                                            {{ event.performed_by.get_full_name|default:event.performed_by.username }}
+                                        {% else %}
+                                            Sistema
+                                        {% endif %}
+                                    </small>
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </article>
+            {% endfor %}
+        {% else %}
+            <p class="muted">Nenhum evento registrado para o período escolhido.</p>
+        {% endif %}
+    </section>
+
+    <div class="detail-grid">
+        <article class="ticket-panel">
+            <h2>Status</h2>
+            <div class="report-chart">
+                <canvas id="statusChart" height="220"></canvas>
+            </div>
+        </article>
+        <article class="ticket-panel">
+            <h2>Urgências</h2>
+            <div class="report-chart">
+                <canvas id="urgencyChart" height="220"></canvas>
+            </div>
+        </article>
+    </div>
+    <div class="detail-grid">
+        <article class="ticket-panel">
+            <h2>Tipos</h2>
+            <div class="report-chart">
+                <canvas id="typeChart" height="220"></canvas>
+            </div>
+        </article>
+        <article class="ticket-panel">
+            <h2>Chamados por mês</h2>
+            <div class="report-chart">
+                <canvas id="monthlyChart" height="220"></canvas>
+            </div>
+        </article>
+    </div>
+
+    <section class="ticket-section">
+        <div class="ticket-heading">
+            <h2>Chamados filtrados</h2>
+            <small class="muted">Exibe até 15 chamados ordenados por criação.</small>
+        </div>
+        {% if recent_tickets %}
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Título</th>
+                            <th>Tipo</th>
+                            <th>Status</th>
+                            <th>Urgência</th>
+                            <th>Criado em</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ticket in recent_tickets %}
+                            <tr>
+                                <td>#{{ ticket.id }}</td>
+                                <td>{{ ticket.title }}</td>
+                                <td>{{ ticket.get_ticket_type_display }}</td>
+                                <td>
+                                    <span class="status-label status-{{ ticket.status }}">
+                                        {{ ticket.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>{{ ticket.get_urgency_display }}</td>
+                                <td>{{ ticket.created_at|date:"d/m/Y H:i" }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="muted">Nenhum chamado encontrado com os filtros atuais.</p>
+        {% endif %}
+    </section>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    (() => {
+        const statusData = {{ status_chart_data|safe }};
+        const urgencyData = {{ urgency_chart_data|safe }};
+        const typeData = {{ type_chart_data|safe }};
+        const monthlyData = {{ monthly_chart_data|safe }};
+
+        const palette = ['#4f46e5', '#ec4899', '#f97316', '#22c55e', '#0ea5e9', '#eab308', '#a855f7'];
+
+        const buildChart = (selector, data, type = 'doughnut') => {
+            const ctx = document.getElementById(selector);
+            if (!ctx) return;
+            new Chart(ctx, {
+                type,
+                data: {
+                    labels: data.map(item => item.label),
+                    datasets: [{
+                        data: data.map(item => item.count),
+                        backgroundColor: palette,
+                        borderWidth: 1,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                    },
+                },
+            });
+        };
+
+        const buildLineChart = (selector, data) => {
+            const ctx = document.getElementById(selector);
+            if (!ctx) return;
+            new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: data.map(item => item.label),
+                    datasets: [{
+                        label: 'Chamados',
+                        data: data.map(item => item.count),
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59,130,246,0.2)',
+                        fill: true,
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                        },
+                    },
+                },
+            });
+        };
+
+        buildChart('statusChart', statusData);
+        buildChart('urgencyChart', urgencyData);
+        buildChart('typeChart', typeData);
+        buildLineChart('monthlyChart', monthlyData);
+    })();
+</script>
+{% endblock %}

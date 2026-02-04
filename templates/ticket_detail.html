@@ -1,0 +1,307 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ ticket.title }}{% endblock %}
+
+{% block content %}
+<section class="ticket-detail">
+    <header class="ticket-header">
+        <div>
+            <h1>#{{ ticket.id }} · {{ ticket.title }}</h1>
+            <p>{{ ticket.description }}</p>
+        </div>
+        <div class="ticket-meta">
+            <span>Status:
+                <span class="status-label status-{{ ticket.status }}">
+                    {{ ticket.get_status_display }}
+                </span>
+            </span>
+            <span>
+                Urgência:
+                <span class="urgency-badge urgency-{{ ticket.urgency }}">
+                    {{ ticket.get_urgency_display }}
+                </span>
+            </span>
+            <span>Tipo: <strong>{{ ticket.get_ticket_type_display }}</strong></span>
+            <span>Solicitante: {{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</span>
+            <span>
+                Responsáveis:
+                {% if working_user_names %}
+                    {{ working_user_names|join:", " }}
+                {% else %}
+                    —
+                {% endif %}
+            </span>
+            <span>Criado em: {{ ticket.created_at|date:"d/m/Y H:i" }}</span>
+        </div>
+    </header>
+
+    <div class="detail-back">
+        <a class="back-link" href="{% url 'dashboard' %}">Voltar ao painel</a>
+    </div>
+
+    <div class="detail-grid">
+        <article class="ticket-panel">
+            <h2>Descrição</h2>
+            <p>{{ ticket.description }}</p>
+        </article>
+        {% if orphan_attachments %}
+            <article class="ticket-panel">
+                <h2>Arquivos do chamado</h2>
+                <p class="muted">Documentos carregados sem vínculo direto a uma mensagem; ficam visíveis tanto para o solicitante quanto para a TI.</p>
+                <ul class="attachment-list">
+                    {% for attachment in orphan_attachments %}
+                        <li>
+                            <div>
+                                <a href="{{ attachment.file.url }}" target="_blank" rel="noreferrer">
+                                    {{ attachment.filename }}
+                                </a>
+                                <div class="attachment-meta">
+                                    <span class="attachment-badge attachment-badge--general">Geral</span>
+                                    <small>{{ attachment.uploaded_at|date:"d/m/Y H:i" }}</small>
+                                </div>
+                            </div>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </article>
+        {% endif %}
+        <article class="ticket-panel">
+            <h2>Ações</h2>
+            {% if is_ti %}
+                <form method="post" class="resolution-form" data-show-progress="true">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        {{ resolution_form.resolution.label_tag }}
+                        {{ resolution_form.resolution }}
+                        {% for error in resolution_form.resolution.errors %}
+                            <p class="form-error">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    <button class="cta-button" name="action" value="resolve">Finalizar chamado</button>
+                </form>
+                <form method="post" class="action-form action-form--pending" data-show-progress="true">
+                    {% csrf_token %}
+                    <div class="action-form__main">
+                        <button class="cta-button" name="action" value="in_progress">
+                            {% if has_working_users %}Continuar atendimento{% else %}Iniciar atendimento{% endif %}
+                        </button>
+                        <div class="pending-block">
+                            <label for="pause-reason">Motivo da pendência</label>
+                            <textarea id="pause-reason" name="pause_reason" rows="2" placeholder="Descreva o motivo pelo qual o chamado está sendo pausado."></textarea>
+                            <small class="muted">Esse texto será registrado junto ao evento de status.</small>
+                            <button class="cta-button cta-outline pending-button" name="action" value="awaiting">Marcar pendente</button>
+                        </div>
+                    </div>
+                </form>
+                <form method="post" class="action-form">
+                    {% csrf_token %}
+                    <button class="cta-button" name="action" value="join_work"
+                        {% if is_working_user or ticket.status == ticket_status.RESOLVED %}
+                            disabled
+                        {% endif %}
+                    >Entrar no atendimento</button>
+                </form>
+                <div class="related-widget">
+                    <button type="button" id="related-button" class="cta-button cta-outline" data-url="{% url 'ticket_related' ticket.pk %}">
+                        Buscar chamados parecidos
+                    </button>
+                    <div id="related-container" class="related-container hidden">
+                        <p class="muted">Clique no botão para ver sugestões baseadas em chamados fechados.</p>
+                    </div>
+                </div>
+            {% endif %}
+            {% if ticket.status == ticket_status.RESOLVED %}
+                <form method="post" class="action-form" data-show-progress="true">
+                    {% csrf_token %}
+                    <button class="cta-button cta-reopen" name="action" value="reopen">Reabrir chamado</button>
+                </form>
+            {% endif %}
+        </article>
+    </div>
+
+    <section class="message-panel">
+        <div class="message-panel-header">
+            <h2>Mensagens</h2>
+            {% if is_ti %}
+                <p>Separe os comentários públicos dos internos para manter tudo organizado.</p>
+            {% else %}
+                <p>Use este espaço para atualizar o técnico de TI sobre o andamento do seu chamado.</p>
+            {% endif %}
+        </div>
+        <div class="message-info-grid">
+            <article class="message-section message-section--public">
+                <header>
+                    <h3>Chat com solicitante</h3>
+                    <p class="muted">Documentos e mensagens compartilhados com o solicitante.</p>
+                </header>
+                <div class="message-list">
+                    {% for message in public_messages %}
+                        <article class="message-item {% if message.author == request.user %}message-author{% endif %}">
+                            <header>
+                                <strong>{{ message.author.get_full_name|default:message.author.username }}</strong>
+                                <span>{{ message.created_at|date:"d/m/Y H:i" }}</span>
+                            </header>
+                            <p>{{ message.text }}</p>
+                            {% if message.attachments.exists %}
+                                <footer class="message-attachments">
+                                    <div class="attachment-legend">
+                                        <span class="attachment-badge attachment-badge--public">Solicitante</span>
+                                        <small class="muted">Documentos compartilhados com o solicitante</small>
+                                    </div>
+                                    <ul>
+                                        {% for attachment in message.attachments.all %}
+                                            <li>
+                                                <a href="{{ attachment.file.url }}" target="_blank" rel="noreferrer">{{ attachment.filename }}</a>
+                                                <small class="muted">{{ attachment.uploaded_at|date:"d/m/Y H:i" }}</small>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </footer>
+                            {% endif %}
+                        </article>
+                    {% empty %}
+                        <p class="muted">Ainda não há mensagens públicas neste chamado.</p>
+                    {% endfor %}
+                </div>
+            </article>
+            {% if is_ti %}
+                <article class="message-section message-section--internal">
+                    <header>
+                        <h3>Documentação e notas internas da TI</h3>
+                        <p class="muted">Registre arquivos e comentários apenas para o time TI.</p>
+                    </header>
+                    <div class="message-list">
+                        {% for message in internal_messages %}
+                        <article class="message-item message-internal">
+                            <header>
+                                <strong>{{ message.author.get_full_name|default:message.author.username }}</strong>
+                                <span>{{ message.created_at|date:"d/m/Y H:i" }}</span>
+                            </header>
+                            <p>{{ message.text }}</p>
+                            {% if message.attachments.exists %}
+                                <footer class="message-attachments">
+                                    <div class="attachment-legend">
+                                        <span class="attachment-badge attachment-badge--internal">Equipe TI</span>
+                                        <small class="muted">Anexos reservados à equipe interna</small>
+                                    </div>
+                                    <ul>
+                                        {% for attachment in message.attachments.all %}
+                                            <li>
+                                                <a href="{{ attachment.file.url }}" target="_blank" rel="noreferrer">{{ attachment.filename }}</a>
+                                                <small class="muted">{{ attachment.uploaded_at|date:"d/m/Y H:i" }}</small>
+                                            </li>
+                                        {% endfor %}
+                                    </ul>
+                                </footer>
+                            {% endif %}
+                        </article>
+                        {% empty %}
+                            <p class="muted">Nenhuma nota interna registrada.</p>
+                        {% endfor %}
+                    </div>
+                </article>
+            {% endif %}
+        </div>
+        <form method="post" class="message-form" data-show-progress="true" enctype="multipart/form-data">
+            {% csrf_token %}
+            <div class="form-group">
+                {{ message_form.text.label_tag }}
+                {{ message_form.text }}
+                {% for error in message_form.text.errors %}
+                    <p class="form-error">{{ error }}</p>
+                {% endfor %}
+            </div>
+            <div class="form-group">
+                {{ message_form.attachments.label_tag }}
+                {{ message_form.attachments }}
+                {% if message_form.attachments.help_text %}
+                    <small class="muted">{{ message_form.attachments.help_text }}</small>
+                {% endif %}
+            </div>
+            {% if is_ti %}
+                <div class="message-visibility-card">
+                    <div class="message-visibility-card__badge">Visibilidade</div>
+                    <div class="message-visibility-card__body">
+                        <label class="message-visibility-card__option">
+                            {{ message_form.internal_note }}
+                            <div>
+                                <strong>Nota interna</strong>
+                                <p class="muted">Somente TI verá essa mensagem e os anexos.</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+            {% endif %}
+            <button type="submit">Enviar mensagem</button>
+        </form>
+    </section>
+</section>
+<script>
+(function () {
+    const button = document.getElementById('related-button');
+    const container = document.getElementById('related-container');
+
+    const render = (tickets) => {
+        if (!container) return;
+        if (!tickets.length) {
+            container.innerHTML = '<p class="muted">Nenhum chamado parecido foi encontrado.</p>';
+            return;
+        }
+        container.innerHTML = tickets.map(ticket => `
+            <article class="related-card">
+                <header>
+                    <strong>${ticket.title}</strong>
+                    <span>${ticket.urgency}</span>
+                </header>
+                <p>${ticket.resolution ? ticket.resolution.substring(0, 120) + (ticket.resolution.length > 120 ? '…' : '') : 'Sem resumo'}</p>
+                <footer>
+                    <small>Resolvido em ${ticket.resolved_at ? new Date(ticket.resolved_at).toLocaleString('pt-BR') : '—'}</small>
+                    <a class="text-link" href="${ticket.url}">Abrir</a>
+                </footer>
+            </article>
+        `).join('');
+    };
+
+    const showMessage = (html) => {
+        if (!container) return;
+        container.innerHTML = html;
+    };
+
+    const setContainerLoading = () => {
+        if (!container) return;
+        container.classList.remove('hidden');
+        container.innerHTML = '<p class="muted">Buscando chamados similares…</p>';
+    };
+
+    const resetButton = () => {
+        if (!button) return;
+        button.disabled = false;
+        button.textContent = 'Buscar chamados parecidos';
+    };
+
+    if (!button || !container) return;
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        button.textContent = 'Buscando chamados parecidos…';
+        setContainerLoading();
+        try {
+            const response = await fetch(button.dataset.url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+                credentials: 'same-origin',
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}`);
+            }
+            const data = await response.json();
+            render(data.tickets || []);
+        } catch (error) {
+            showMessage(`<p class="muted">Não foi possível carregar os chamados parecidos: ${error.message}</p>`);
+        } finally {
+            resetButton();
+        }
+    });
+})();
+</script>
+{% endblock %}

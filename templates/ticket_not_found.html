@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}Chamado não encontrado{% endblock %}
+
+{% block content %}
+<section class="ticket-detail">
+    <header class="ticket-header">
+        <div>
+            <h1>{{ message_title }}</h1>
+            <p>{{ message_body }}</p>
+        </div>
+    </header>
+    <div class="detail-back">
+        <a class="back-link" href="{{ back_url }}">Voltar ao painel</a>
+    </div>
+</section>
+{% endblock %}

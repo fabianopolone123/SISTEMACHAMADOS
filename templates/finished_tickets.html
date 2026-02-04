@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Chamados finalizados{% endblock %}
+
+{% block content %}
+<section class="dashboard">
+    <header class="dashboard-header">
+        <div>
+            <h1>Chamados finalizados</h1>
+            <p>Lista de chamados concluídos para acompanhamento e histórico.</p>
+        </div>
+        <div class="dashboard-actions">
+            <a class="cta-button" href="{% url 'dashboard' %}">Voltar ao painel</a>
+        </div>
+    </header>
+    <form method="get" class="search-form">
+        <div class="form-group">
+            <input name="q" placeholder="Buscar por título, descrição ou resolução" value="{{ query }}" class="form-control" />
+        </div>
+        <button type="submit" class="cta-button">Buscar</button>
+    </form>
+
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Título</th>
+                    <th>Urgência</th>
+                    <th>Solicitante</th>
+                    <th>Responsável</th>
+                    <th>Resolvido em</th>
+                    <th>Resumo da resolução</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for ticket in tickets %}
+                    <tr>
+                        <td>{{ ticket.title }}</td>
+                        <td>
+                            <span class="urgency-badge urgency-{{ ticket.urgency }}">
+                                {{ ticket.get_urgency_display }}
+                            </span>
+                        </td>
+                        <td>{{ ticket.created_by.get_full_name|default:ticket.created_by.username }}</td>
+                        <td>
+                            {% if ticket.assigned_to %}
+                                {{ ticket.assigned_to.get_full_name|default:ticket.assigned_to.username }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td>{{ ticket.resolved_at|date:"d/m/Y H:i" }}</td>
+                        <td>{{ ticket.resolution|linebreaksbr }}</td>
+                        <td><a class="text-link" href="{% url 'ticket_detail' ticket.pk %}">Abrir</a></td>
+                    </tr>
+                {% empty %}
+                    <tr>
+                        <td colspan="7" class="muted">Ainda não há chamados finalizados.</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+{% endblock %}

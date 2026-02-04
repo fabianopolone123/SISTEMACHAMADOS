@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+
+{% block title %}Configurar WhatsApp{% endblock %}
+
+{% block content %}
+<section class="dashboard whatsapp-config">
+    <header class="dashboard-header">
+        <div>
+            <h1>Configurar WhatsApp</h1>
+            <p>Envie mensagens para o grupo oficial e mantenha os contatos para envio particular.</p>
+        </div>
+    </header>
+
+    <article class="ticket-panel">
+        <h2>Grupo atual de envio</h2>
+        <p><strong>{{ configured_group_name }}</strong></p>
+        <p class="muted">ID: {{ configured_group_id }}</p>
+
+        {% if group_error %}
+            <div class="alert">
+                <strong>Não foi possível validar o nome do grupo na sessão WAPI.</strong>
+                <p>{{ group_error }}</p>
+            </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'whatsapp_notify_group' %}" class="whatsapp-group-form">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="group-message">Mensagem para o grupo</label>
+                <textarea id="group-message" name="message" rows="4"
+                          placeholder="Digite a mensagem que será enviada ao grupo configurado."></textarea>
+            </div>
+            <button class="cta-button" type="submit">Enviar para grupo</button>
+        </form>
+    </article>
+
+    <article class="ticket-panel">
+        <h2>Contatos particulares</h2>
+        <p class="muted">Cadastre nome + WhatsApp para usar no envio individual.</p>
+
+        <form method="post" class="whatsapp-group-form">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="add_recipient">
+            <div class="form-group">
+                <label for="{{ recipient_form.name.id_for_label }}">Nome</label>
+                {{ recipient_form.name }}
+                {% for error in recipient_form.name.errors %}
+                    <small class="form-error">{{ error }}</small>
+                {% endfor %}
+            </div>
+            <div class="form-group">
+                <label for="{{ recipient_form.phone_number.id_for_label }}">WhatsApp</label>
+                {{ recipient_form.phone_number }}
+                {% for error in recipient_form.phone_number.errors %}
+                    <small class="form-error">{{ error }}</small>
+                {% endfor %}
+            </div>
+            <button class="cta-button" type="submit">Salvar contato</button>
+        </form>
+
+        <div class="group-list">
+            {% if recipients %}
+                {% for recipient in recipients %}
+                    <div class="group-card group-card--selected">
+                        <div>
+                            <strong>{{ recipient.name }}</strong>
+                            <small>{{ recipient.phone_number }}</small>
+                        </div>
+                        <form method="post">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="delete_recipient">
+                            <input type="hidden" name="recipient_id" value="{{ recipient.id }}">
+                            <button type="submit" class="link-button">Remover</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <p class="muted">Nenhum contato cadastrado ainda.</p>
+            {% endif %}
+        </div>
+    </article>
+</section>
+{% endblock %}
